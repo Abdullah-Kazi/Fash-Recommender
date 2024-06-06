@@ -4,6 +4,5 @@ tqdm
 streamlit
 pandas
 Pillow
-sklearn
 scikit-learn
 opencv-python
