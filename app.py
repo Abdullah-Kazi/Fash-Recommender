@@ -44,7 +44,6 @@ def extract_img_features(img_path, model):
     preprocessed_img = preprocess_input(expand_img)
     result_to_resnet = model.predict(preprocessed_img)
     flatten_result = result_to_resnet.flatten()
-    # Normalize the result
     result_normalized = flatten_result / norm(flatten_result)
     return result_normalized
 
