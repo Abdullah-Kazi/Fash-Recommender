@@ -1,15 +1,14 @@
 import streamlit as st
 import tensorflow as tf
-import pandas as pd
-from PIL import Image
-import pickle
-import numpy as np
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
 from tensorflow.keras.layers import GlobalMaxPooling2D
 from tensorflow.keras.models import Sequential
 from numpy.linalg import norm
 from sklearn.neighbors import NearestNeighbors
+from PIL import Image
+import numpy as np
+import pickle
 import os
 
 # Load precomputed features and file list
@@ -21,7 +20,11 @@ model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3
 model.trainable = False
 model = Sequential([model, GlobalMaxPooling2D()])
 
-st.title('Clothing Recommender System')
+# Set page configuration
+st.set_page_config(page_title="Clothing Recommender", page_icon=":shirt:", layout="wide")
+
+# Styling with markdown and HTML
+st.title('👗 Clothing Recommender System')
 
 def save_file(uploaded_file):
     """ Saves uploaded file to disk. """
@@ -57,18 +60,22 @@ def recommend(features, features_list):
     return indices
 
 def display_images(indices):
-    """ Display recommended images. """
-    for i, idx in enumerate(indices[0]):
-        try:
-            img_path = img_files_list[idx]
-            image = Image.open(img_path)
-            st.image(image, caption=f"Recommended Image {i+1}", width=200)
-        except Exception as e:
-            st.error(f"Failed to display image {img_files_list[idx]}: {str(e)}")
+    """ Display recommended images using columns. """
+    cols = st.columns(len(indices[0]))
+    for idx, col in zip(indices[0], cols):
+        with col:
+            try:
+                img_path = img_files_list[idx]
+                image = Image.open(img_path)
+                st.image(image, width=150)
+                st.caption(f"Recommended Style")
+            except Exception as e:
+                st.error(f"Failed to display image {img_files_list[idx]}: {str(e)}")
 
-uploaded_file = st.file_uploader("Choose your image")
+uploaded_file = st.file_uploader("Choose your image", type=["jpg", "png", "jpeg"])
 if uploaded_file is not None:
-    file_path = save_file(uploaded_file)
+    with st.spinner('Uploading and processing...'):
+        file_path = save_file(uploaded_file)
     if file_path:
         try:
             show_image = Image.open(file_path)
@@ -77,7 +84,12 @@ if uploaded_file is not None:
             img_indices = recommend(features, features_list)
             display_images(img_indices)
         except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
+            st.error(f"An error occurred while processing the image: {str(e)}")
     else:
         st.error("Failed to upload or save the file.")
+
+# Add some space and app description at the bottom
+st.markdown("---")
+st.markdown("## About this app")
+st.info("This app uses a deep learning model to recommend clothing styles based on the image you upload. It's powered by TensorFlow and Streamlit.")
 
