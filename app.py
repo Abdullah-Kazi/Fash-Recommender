@@ -11,19 +11,15 @@ import numpy as np
 import pickle
 import os
 
-# Load precomputed features and file list
 features_list = pickle.load(open("image_features_embedding.pkl", "rb"))
 img_files_list = pickle.load(open("img_files.pkl", "rb"))
 
-# Initialize the model
 model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
 model.trainable = False
 model = Sequential([model, GlobalMaxPooling2D()])
 
-# Set page configuration
 st.set_page_config(page_title="Clothing Recommender", page_icon=":shirt:", layout="wide")
 
-# Styling with markdown and HTML
 st.title('👗 Clothing Recommender System')
 
 def save_file(uploaded_file):
@@ -87,9 +83,4 @@ if uploaded_file is not None:
             st.error(f"An error occurred while processing the image: {str(e)}")
     else:
         st.error("Failed to upload or save the file.")
-
-# Add some space and app description at the bottom
-st.markdown("---")
-st.markdown("## About this app")
-st.info("This app uses a deep learning model to recommend clothing styles based on the image you upload. It's powered by TensorFlow and Streamlit.")
 
