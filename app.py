@@ -1,5 +1,5 @@
 import streamlit as st
-import tensorflow
+import tensorflow as tf
 import pandas as pd
 from PIL import Image
 import pickle
@@ -12,78 +12,72 @@ from numpy.linalg import norm
 from sklearn.neighbors import NearestNeighbors
 import os
 
+# Load precomputed features and file list
 features_list = pickle.load(open("image_features_embedding.pkl", "rb"))
 img_files_list = pickle.load(open("img_files.pkl", "rb"))
 
+# Initialize the model
 model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
 model.trainable = False
 model = Sequential([model, GlobalMaxPooling2D()])
 
-st.title('Clothing recommender system')
-
+st.title('Clothing Recommender System')
 
 def save_file(uploaded_file):
+    """ Saves uploaded file to disk. """
+    upload_dir = "uploader"
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
     try:
-        with open(os.path.join("uploader", uploaded_file.name), 'wb') as f:
+        file_path = os.path.join(upload_dir, uploaded_file.name)
+        with open(file_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
-            return 1
-    except:
-        return 0
-
+        return file_path
+    except Exception as e:
+        st.error(f"Failed to save file: {str(e)}")
+        return None
 
 def extract_img_features(img_path, model):
+    """ Extract image features using the ResNet50 model. """
     img = image.load_img(img_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
     expand_img = np.expand_dims(img_array, axis=0)
     preprocessed_img = preprocess_input(expand_img)
     result_to_resnet = model.predict(preprocessed_img)
     flatten_result = result_to_resnet.flatten()
-    # normalizing
-    result_normlized = flatten_result / norm(flatten_result)
+    # Normalize the result
+    result_normalized = flatten_result / norm(flatten_result)
+    return result_normalized
 
-    return result_normlized
-
-
-def recommendd(features, features_list):
+def recommend(features, features_list):
+    """ Recommend images based on nearest neighbors. """
     neighbors = NearestNeighbors(n_neighbors=6, algorithm='brute', metric='euclidean')
     neighbors.fit(features_list)
-
-    distence, indices = neighbors.kneighbors([features])
-
+    distance, indices = neighbors.kneighbors([features])
     return indices
+
+def display_images(indices):
+    """ Display recommended images. """
+    for i, idx in enumerate(indices[0]):
+        try:
+            img_path = img_files_list[idx]
+            image = Image.open(img_path)
+            st.image(image, caption=f"Recommended Image {i+1}", width=200)
+        except Exception as e:
+            st.error(f"Failed to display image {img_files_list[idx]}: {str(e)}")
 
 uploaded_file = st.file_uploader("Choose your image")
 if uploaded_file is not None:
-    if save_file(uploaded_file):
-        # display image
-        show_images = Image.open(uploaded_file)
-        size = (400, 400)
-        resized_im = show_images.resize(size)
-        st.image(resized_im)
-        # extract features of uploaded image
-        features = extract_img_features(os.path.join("uploader", uploaded_file.name), model)
-        #st.text(features)
-        img_indicess = recommendd(features, features_list)
-        col1,col2,col3,col4,col5 = st.columns(5)
-
-        with col1:
-            st.header("I")
-            st.image(img_files_list[img_indicess[0][0]])
-
-        with col2:
-            st.header("II")
-            st.image(img_files_list[img_indicess[0][1]])
-
-        with col3:
-            st.header("III")
-            st.image(img_files_list[img_indicess[0][2]])
-
-        with col4:
-            st.header("IV")
-            st.image(img_files_list[img_indicess[0][3]])
-
-        with col5:
-            st.header("V")
-            st.image(img_files_list[img_indicess[0][4]])
+    file_path = save_file(uploaded_file)
+    if file_path:
+        try:
+            show_image = Image.open(file_path)
+            st.image(show_image, caption="Uploaded Image", width=400)
+            features = extract_img_features(file_path, model)
+            img_indices = recommend(features, features_list)
+            display_images(img_indices)
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
     else:
-        st.header("Some error occur")
+        st.error("Failed to upload or save the file.")
+
